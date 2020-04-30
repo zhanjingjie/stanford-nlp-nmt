@@ -26,7 +26,7 @@ def pad_sents(sents, pad_token):
         longest_len = len(l)
 
     for l in sents:
-      padded_sent = l + [pad_token for i in range(longest_len - len(l))]
+      padded_sent = l + [pad_token] * (longest_len - len(l))
       sents_padded.append(padded_sent)
     ### END YOUR CODE
 
