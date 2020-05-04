@@ -66,7 +66,7 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/nn.html#torch.nn.Linear
         ###     Dropout Layer:
         ###         https://pytorch.org/docs/stable/nn.html#torch.nn.Dropout
-        self.encoder = nn.LSTM(embed_size, self.hidden_size * 2, 1, bidirectional=True)
+        self.encoder = nn.LSTM(embed_size, self.hidden_size, 1, bidirectional=True)
         self.decoder = nn.LSTMCell(embed_size, self.hidden_size * 2)
         self.h_projection = nn.Linear(self.hidden_size * 2, self.hidden_size, False)
         self.c_projection = nn.Linear(self.hidden_size * 2, self.hidden_size, False)
@@ -162,7 +162,15 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/torch.html#torch.cat
         ###     Tensor Permute:
         ###         https://pytorch.org/docs/stable/tensors.html#torch.Tensor.permute
+        X = self.model_embeddings.source(source_padded)
+        packed = nn.utils.rnn.pack_padded_sequence(X, source_lengths)
+        output, (last_hidden, last_cell) = self.encoder(packed, (torch.randn(2, len(source_lengths), self.hidden_size), torch.randn(2, len(source_lengths), self.hidden_size)))
+        unpacked, lens_unpacked = nn.utils.rnn.pad_packed_sequence(output)
+        enc_hiddens = unpacked.permute(1, 0, 2)
 
+        init_decoder_hidden = self.h_projection(torch.cat((last_hidden[0], last_hidden[1]), 1))
+        init_decoder_cell = self.c_projection(torch.cat((last_cell[0], last_cell[1]), 1))
+        dec_init_state = (init_decoder_hidden, init_decoder_cell)
         ### END YOUR CODE
 
         return enc_hiddens, dec_init_state
