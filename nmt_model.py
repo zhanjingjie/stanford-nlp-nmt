@@ -164,7 +164,7 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/tensors.html#torch.Tensor.permute
         X = self.model_embeddings.source(source_padded)
         packed = nn.utils.rnn.pack_padded_sequence(X, source_lengths)
-        output, (last_hidden, last_cell) = self.encoder(packed, (torch.zeros(2, len(source_lengths), self.hidden_size), torch.zeros(2, len(source_lengths), self.hidden_size)))
+        output, (last_hidden, last_cell) = self.encoder(packed, (torch.zeros(2, len(source_lengths), self.hidden_size, device=self.device), torch.zeros(2, len(source_lengths), self.hidden_size, device=self.device)))
         unpacked, lens_unpacked = nn.utils.rnn.pad_packed_sequence(output)
         enc_hiddens = unpacked.permute(1, 0, 2)
 
@@ -240,6 +240,15 @@ class NMT(nn.Module):
         ###         https://pytorch.org/docs/stable/torch.html#torch.stack
 
         ### END YOUR CODE
+        enc_hiddens_proj = self.att_projection(enc_hiddens)
+        Y = self.model_embeddings.target(target_padded)
+        for Y_t in torch.split(Y, 1, dim=0):
+          Y_t_squeezed = torch.squeeze(Y_t, 0)
+          Ybar_t = torch.cat((Y_t_squeezed, o_prev), 1)
+          dec_state, o_t, e_t = self.step(Ybar_t, dec_state, enc_hiddens, enc_hiddens_proj, enc_masks)
+          combined_outputs.append(o_t)
+          o_prev = o_t
+        combined_outputs = torch.stack(combined_outputs)
 
         return combined_outputs
 
